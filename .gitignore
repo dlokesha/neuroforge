@@ -1,0 +1,5 @@
+neuroforge/
+__pycache__/
+*.pyc
+outputs/
+data/

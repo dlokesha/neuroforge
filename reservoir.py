@@ -63,8 +63,8 @@ class ReservoirLayer:
     def __init__(
         self,
         n_units: int = 1024,
-        spectral_radius: float = 0.9,
-        input_scaling: float = 0.1,
+        spectral_radius: float = 0.7,
+        input_scaling: float = 0.01,
         sparsity: float = 0.1,
         seed: int = 42,
     ):
@@ -104,15 +104,6 @@ class ReservoirLayer:
         return self.state.copy()
 
     def stimulate(self, electrode_pattern: np.ndarray, steps: int = 10) -> np.ndarray:
-        """
-        Run multiple timesteps of stimulation and return spike-rate summary.
-
-        TBC paper: "we recorded activity over a short time window and summarized
-        it using spike-rate measurements."
-
-        Spike rate ≈ mean activation magnitude over the stimulation window.
-        We track which reservoir units were above threshold — "spiking."
-        """
         self.reset()
         activations = []
 
@@ -122,11 +113,14 @@ class ReservoirLayer:
 
         activations = np.array(activations)  # (steps, n_units)
 
-        # Spike rate readout: fraction of time each unit was "active"
-        threshold = 0.1
-        spike_rates = (np.abs(activations) > threshold).mean(axis=0)
-
-        return spike_rates  # (n_units,)
+        # Use mean activation directly instead of spike rate threshold
+        # Threshold was killing the signal — raw mean carries more info
+        readout = np.mean(np.abs(activations), axis=0)
+        
+        # Normalize to [0, 1]
+        readout = (readout - readout.min()) / (readout.max() - readout.min() + 1e-8)
+        
+        return readout
 
     def get_spatial_readout(self, spike_rates: np.ndarray, grid_size: int = 64) -> np.ndarray:
         """

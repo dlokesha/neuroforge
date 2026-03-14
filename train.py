@@ -130,57 +130,6 @@ def train_model(model, train_loader, test_loader, epochs: int, lr: float = 1e-3,
     return train_accs, test_accs
 
 
-def run_ablation(
-    bio_train: np.ndarray,
-    bio_test: np.ndarray,
-    train_labels: np.ndarray,
-    test_labels: np.ndarray,
-    n_units: int = 1024,
-    epochs: int = 10,
-):
-    """
-    Ablation study replicating TBC Figure 4 (right panel).
-
-    Splits reservoir units into:
-    - Whole:      all 1024 units
-    - Center:     first 512 units (approximates directly stimulated region)
-    - Periphery:  last 512 units (approximates spread-beyond-stimulation)
-
-    TBC result: Whole ≈ Center >> Periphery > chance (10%)
-    All three should beat chance — proving bio spread carries real info.
-    """
-    print("\nRunning ablation study...")
-    results = {}
-
-    splits = {
-        "Whole": (0, n_units),
-        "Center": (0, n_units // 2),
-        "Periphery": (n_units // 2, n_units),
-    }
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    for name, (start, end) in splits.items():
-        subset_train = bio_train[:, start:end]
-        subset_test = bio_test[:, start:end]
-        input_dim = end - start
-
-        train_ds = TensorDataset(
-            torch.FloatTensor(subset_train), torch.LongTensor(train_labels)
-        )
-        test_ds = TensorDataset(
-            torch.FloatTensor(subset_test), torch.LongTensor(test_labels)
-        )
-        train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
-        test_loader = DataLoader(test_ds, batch_size=64)
-
-        model = AblationCNN(input_dim=input_dim)
-        _, test_accs = train_model(model, train_loader, test_loader, epochs, label=name)
-        results[name] = test_accs[-1]
-        print(f"  {name}: {test_accs[-1]*100:.1f}%")
-
-    return results
-
 
 def plot_results(baseline_test, bio_test, save_path: str = "outputs/accuracy_curves.png"):
     """
@@ -225,7 +174,6 @@ def plot_results(baseline_test, bio_test, save_path: str = "outputs/accuracy_cur
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     print(f"Saved accuracy plot to {save_path}")
-    plt.show()
 
 
 def plot_activation_spread(
@@ -276,8 +224,57 @@ def plot_activation_spread(
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     print(f"Saved activation spread plot to {save_path}")
-    plt.show()
 
+def run_ablation(
+    bio_train: np.ndarray,
+    bio_test: np.ndarray,
+    train_labels: np.ndarray,
+    test_labels: np.ndarray,
+    n_units: int = 1024,
+    epochs: int = 10,
+):
+    """
+    Ablation study replicating TBC Figure 4 (right panel).
+
+    Splits reservoir units into:
+    - Whole:      all 1024 units
+    - Center:     first 512 units (approximates directly stimulated region)
+    - Periphery:  last 512 units (approximates spread-beyond-stimulation)
+
+    TBC result: Whole ≈ Center >> Periphery > chance (10%)
+    All three should beat chance — proving bio spread carries real info.
+    """
+    print("\nRunning ablation study...")
+    results = {}
+
+    splits = {
+        "Whole": (0, n_units),
+        "Center": (0, n_units // 2),
+        "Periphery": (n_units // 2, n_units),
+    }
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    for name, (start, end) in splits.items():
+        subset_train = bio_train[:, start:end]
+        subset_test = bio_test[:, start:end]
+        input_dim = end - start
+
+        train_ds = TensorDataset(
+            torch.FloatTensor(subset_train), torch.LongTensor(train_labels)
+        )
+        test_ds = TensorDataset(
+            torch.FloatTensor(subset_test), torch.LongTensor(test_labels)
+        )
+        train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
+        test_loader = DataLoader(test_ds, batch_size=64)
+
+        model = AblationCNN(input_dim=input_dim)
+        _, test_accs = train_model(model, train_loader, test_loader, epochs, label=name)
+        results[name] = test_accs[-1]
+        print(f"  {name}: {test_accs[-1]*100:.1f}%")
+
+    return results
 
 def main():
     parser = argparse.ArgumentParser()
@@ -360,7 +357,8 @@ def main():
     # ── 7. Ablation study ────────────────────────────────────────────────────
     if not args.skip_ablation:
         ablation_results = run_ablation(
-            bio_train, bio_test, train_labels, test_labels, epochs=args.epochs
+            bio_train, bio_test, train_labels, test_labels,
+            epochs=3
         )
         print("\nAblation results:")
         for k, v in ablation_results.items():
@@ -392,6 +390,8 @@ def main():
     print(f"(TBC paper reported: +4.7%)")
     print(f"{'='*50}")
     print(f"\nOutputs saved to ./outputs/")
+
+
 
 
 if __name__ == "__main__":
