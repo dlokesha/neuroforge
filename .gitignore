@@ -1,0 +1,10 @@
+neuroforge/
+venv/
+outputs/
+data/
+__pycache__/
+*.pyc
+*.pkl
+.env
+*.dylib
+*.so
