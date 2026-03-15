@@ -2,7 +2,7 @@
 title: Neuroforge
 emoji: 🧠
 colorFrom: purple
-colorTo: teal
+colorTo: green
 sdk: gradio
 sdk_version: 4.0.0
 app_file: app.py
