@@ -37,30 +37,20 @@ class BaselineCNN(nn.Module):
 class BioCNN(nn.Module):
     """
     Trains on spike-rate vectors from the reservoir layer.
-    Input shape: (B, n_reservoir_units) — 1D vector, not an image.
-
-    TBC paper: "neural responses were used as input to a downstream ANN."
-    Architecture kept simple to isolate bio contribution.
+    Uses fully connected layers — spike rates are not spatially
+    structured like images, so FC works better than conv.
     """
 
     def __init__(self, n_reservoir_units: int = 1024, n_classes: int = 10):
         super().__init__()
-        # Reshape to 2D for conv (treat reservoir units as a spatial map)
-        self.spatial_size = 32  # 32×32 = 1024 units
-        self.conv1 = nn.Conv2d(1, 5, kernel_size=4, stride=2, padding=1)
-        # After conv on 32×32: (32-4+2)/2 + 1 = 16 → 5*16*16
-        self.flatten_size = 5 * 16 * 16
-        self.fc1 = nn.Linear(self.flatten_size, 128)
+        self.fc1 = nn.Linear(n_reservoir_units, 512)
+        self.fc2 = nn.Linear(512, 128)
         self.classifier = nn.Linear(128, n_classes)
-        self.n_reservoir_units = n_reservoir_units
 
     def forward(self, x):
-        # x: (B, n_reservoir_units) → reshape to (B, 1, 32, 32)
-        B = x.shape[0]
-        x = x.view(B, 1, self.spatial_size, self.spatial_size)
-        x = F.relu(self.conv1(x))
-        x = x.flatten(1)
         x = F.relu(self.fc1(x))
+        x = F.dropout(x, p=0.3, training=self.training)
+        x = F.relu(self.fc2(x))
         return self.classifier(x)
 
 
