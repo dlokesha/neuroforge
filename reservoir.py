@@ -64,7 +64,7 @@ class ReservoirLayer:
         self,
         n_units: int = 1024,
         spectral_radius: float = 0.9,
-        input_scaling: float = 0.1,
+        input_scaling: float = 0.01,
         sparsity: float = 0.1,
         seed: int = 42,
     ):
